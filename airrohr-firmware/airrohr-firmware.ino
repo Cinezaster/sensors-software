@@ -58,7 +58,7 @@
 /*                                                               *
 /*****************************************************************/
 // increment on change
-#define SOFTWARE_VERSION "NRZ-2017-080"
+#define SOFTWARE_VERSION "NRZ-2017-082"
 
 /*****************************************************************
 /* Includes                                                      *
@@ -507,7 +507,7 @@ String SDS_version_date() {
 
 	serialSDS.write(version_SDS_cmd,sizeof(version_SDS_cmd));
 
-	delay(100);
+	delay(500);
 
 	while (serialSDS.available() > 0) {
 		buffer = serialSDS.read();
@@ -822,7 +822,7 @@ String form_submit(const String& value) {
 
 String form_select_lang() {
 	String s_select = F("selected='selected'");
-	String s = F("{t} <select name='current_lang'><option value='DE' {s_DE}>Deutsch (DE)</option><option value='BG' {s_BG}>Bulgarian (BG)</option><option value='EN' {s_EN}>English (EN)</option><option value='ES' {s_ES}>Español (ES)</option><option value='FR' {s_FR}>Français (FR)</option></select><br/>");
+	String s = F("{t} <select name='current_lang'><option value='DE' {s_DE}>Deutsch (DE)</option><option value='BG' {s_BG}>Bulgarian (BG)</option><option value='EN' {s_EN}>English (EN)</option><option value='ES' {s_ES}>Español (ES)</option><option value='FR' {s_FR}>Français (FR)</option><option value='NL' {s_NL}>Nederlands (NL)</option></select><br/>");
 
 	s.replace("{t}",FPSTR(INTL_SPRACHE));
 	if(String(current_lang) == "DE"){
@@ -835,12 +835,15 @@ String form_select_lang() {
 		s.replace(F("{s_ES}"),s_select);
 	}else if(String(current_lang) == "FR"){
 		s.replace(F("{s_FR}"),s_select);
+	}else if(String(current_lang) == "NL"){
+		s.replace(F("{s_NL}"),s_select);
 	}
 	s.replace(F("{s_DE}"),"");
 	s.replace(F("{s_BG}"),"");
 	s.replace(F("{s_EN}"),"");
 	s.replace(F("{s_ES}"),"");
 	s.replace(F("{s_FR}"),"");
+	s.replace(F("{s_NL}"),"");
 	return s;
 }
 
@@ -2302,6 +2305,7 @@ void loop() {
 	String tmp_str;
 	String data_4_dusti = "";
 	String data_4_influxdb = "";
+	String data_4_custom = "";
 	String data_sample_times = "";
 
 	String sensemap_path = "";
@@ -2542,13 +2546,6 @@ void loop() {
 			sum_send_time += micros() - start_send;
 		}
 
-		if (send2custom) {
-			debug_out(F("## Sending to custom api: "),DEBUG_MIN_INFO,1);
-			start_send = micros();
-			sendData(data,0,host_custom,port_custom,url_custom,basic_auth_custom.c_str(),FPSTR(TXT_CONTENT_TYPE_JSON));
-			sum_send_time += micros() - start_send;
-		}
-
 		if (send2influx) {
 			debug_out(F("## Sending to custom influx db: "),DEBUG_MIN_INFO,1);
 			start_send = micros();
@@ -2566,6 +2563,17 @@ void loop() {
 			debug_out(F("## Sending as csv: "),DEBUG_MIN_INFO,1);
 			send_csv(data);
 		}
+
+		if (send2custom) {
+			data_4_custom = data;
+			data_4_custom.remove(0,1);
+			data_4_custom = "{\"esp8266id\": \""+String(esp_chipid)+"\", "+data_4_custom;
+			debug_out(F("## Sending to custom api: "),DEBUG_MIN_INFO,1);
+			start_send = micros();
+			sendData(data_4_custom,0,host_custom,port_custom,url_custom,basic_auth_custom.c_str(),FPSTR(TXT_CONTENT_TYPE_JSON));
+			sum_send_time += micros() - start_send;
+		}
+
 		server.begin();
 
 		if ((act_milli-last_update_attempt) > (28 * pause_between_update_attempts)) {
